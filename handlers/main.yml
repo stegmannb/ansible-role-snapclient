@@ -1,1 +1,16 @@
 ---
+- name: Start snapclient service.
+  systemd:
+    name: snapclient
+    state: started
+    daemon_reload: true
+  register: snapclient_service_started
+
+- name: Restart snapclient service.
+  systemd:
+    name: snapclient
+    state: restarted
+    daemon_reload: true
+  when: >-
+    snapclient_service_started is not defined
+    or not snapclient_service_started.changed

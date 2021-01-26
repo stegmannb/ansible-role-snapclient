@@ -1,0 +1,2 @@
+START_SNAPCLIENT=true
+SNAPCLIENT_OPTS= {% if snapclient_host is defined %}--host {{ snapclient_host }}{% endif %}{% if snapclient_hostid is defined %} --hostID "{{ snapclient_hostid }}"{% endif %}{% if snapclient_logsink is defined %} --logsink {{ snapclient_logsink }}{% endif %}{% if snapclient_logfilter is defined %} --logfilter {{ snapclient_logfilter }}{% endif %}

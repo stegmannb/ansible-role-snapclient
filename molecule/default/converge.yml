@@ -3,6 +3,9 @@
 
   hosts: all
 
+  vars:
+    snapclient_host: snapcast.local
+
   tasks:
     - name: "Include role"
       include_role:

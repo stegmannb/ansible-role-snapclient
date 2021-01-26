@@ -1,4 +1,85 @@
 ---
-- name: Example task
-  debug:
-    msg: Running example task
+- name: Check if running on a system based on Debian.
+  assert:
+    that: ansible_facts['os_family'] == "Debian"
+    fail_msg: This role only supports systems based on Debian.
+    quiet: true
+
+- name: Check GitHub for the newest snapcast release.
+  uri:
+    url: https://api.github.com/repos/badaix/snapcast/releases/latest
+  register: github_snapcast
+  run_once: true
+
+- name: Check GitHub version.
+  set_fact:
+    github_release: "{{ github_snapcast.json }}"
+    snapclient_github: "{{ github_snapcast.json.tag_name|regex_replace('[^0-9.]', '') }}"
+
+- name: Install required packages.
+  apt:
+    name: python3-apt
+    state: present
+    cache_valid_time: 300
+
+- name: Gather package facts.
+  package_facts:
+    manager: "apt"
+
+- name: Find installed snapclient packages.
+  set_fact:
+    snapclient_packages: "{{ ansible_facts.packages|json_query(query) }}"
+  vars:
+    query: "*[]|[?contains(name,'snapclient')]"
+
+- name: Check installed snapclient packages.
+  assert:
+    that: snapclient_packages|length <= 1
+    fail_msg: There is more than one snapclient package installed.
+    quiet: true
+
+- name: Check installed version.
+  set_fact:
+    snapclient_package: "{{ snapclient_packages[0] }}"
+    snapclient_installed: "{{ snapclient_packages[0].version | regex_search('^[0-9.]+') }}"
+  when: snapclient_packages|length == 1
+
+- name: Install latest release from GitHub.
+  apt:
+    deb: "https://github.com/badaix/snapcast/releases/download/\
+      {{ github_release.tag_name }}/snapclient_\
+      {{ github_release.tag_name | regex_replace('[^0-9.,]+', '') }}-1_\
+      {{ 'amd64' if ansible_architecture == 'x86_64' else 'armhf' }}.deb"
+    install_recommends: true
+    cache_valid_time: 300
+    state: present
+  when: >-
+    snapclient_installed is not defined
+    or (snapclient_update
+        and snapclient_github|regex_replace('[^0-9.]', '') != snapclient_installed|regex_replace('[^0-9.]', '')
+       )
+  notify: Start snapclient service.
+
+- name: Install snapclient configuration.
+  template:
+    src: templates/snapclient.j2
+    dest: /etc/default/snapclient
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart snapclient service.
+
+- name: Install snapclient service.
+  template:
+    src: templates/snapclient.service.j2
+    dest: /etc/systemd/system/snapclient.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart snapclient service.
+
+- name: Enable snapclient service.
+  systemd:
+    name: snapclient
+    daemon_reload: true
+    enabled: true

@@ -1,1 +1,3 @@
 ---
+snapclient_update: true
+snapclient_systemlog: false
