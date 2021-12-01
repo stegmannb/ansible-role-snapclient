@@ -1,51 +1,47 @@
 ---
-- name: Check if running on a system based on Debian.
-  assert:
-    that: ansible_facts['os_family'] == "Debian"
-    fail_msg: This role only supports systems based on Debian.
-    quiet: true
-
 - name: Check GitHub for the newest snapcast release.
-  uri:
+  ansible.builtin.uri:
     url: https://api.github.com/repos/badaix/snapcast/releases/latest
   register: github_snapcast
   run_once: true
 
 - name: Check GitHub version.
-  set_fact:
+  ansible.builtin.set_fact:
     github_release: "{{ github_snapcast.json }}"
     snapclient_github: "{{ github_snapcast.json.tag_name|regex_replace('[^0-9.]', '') }}"
 
 - name: Install required packages.
-  apt:
+  ansible.builtin.apt:
     name: python3-apt
     state: present
     cache_valid_time: 300
+  become: true
 
 - name: Gather package facts.
-  package_facts:
+  ansible.builtin.package_facts:
     manager: "apt"
+  become: true
 
 - name: Find installed snapclient packages.
-  set_fact:
+  ansible.builtin.set_fact:
     snapclient_packages: "{{ ansible_facts.packages|json_query(query) }}"
   vars:
     query: "*[]|[?contains(name,'snapclient')]"
 
 - name: Check installed snapclient packages.
-  assert:
+  ansible.builtin.assert:
     that: snapclient_packages|length <= 1
     fail_msg: There is more than one snapclient package installed.
     quiet: true
 
 - name: Check installed version.
-  set_fact:
+  ansible.builtin.set_fact:
     snapclient_package: "{{ snapclient_packages[0] }}"
     snapclient_installed: "{{ snapclient_packages[0].version | regex_search('^[0-9.]+') }}"
   when: snapclient_packages|length == 1
 
 - name: Install latest release from GitHub.
-  apt:
+  ansible.builtin.apt:
     deb: "https://github.com/badaix/snapcast/releases/download/\
       {{ github_release.tag_name }}/snapclient_\
       {{ github_release.tag_name | regex_replace('[^0-9.,]+', '') }}-1_\
@@ -58,28 +54,32 @@
     or (snapclient_update
         and snapclient_github|regex_replace('[^0-9.]', '') != snapclient_installed|regex_replace('[^0-9.]', '')
        )
+  become: true
   notify: Start snapclient service.
 
 - name: Install snapclient configuration.
-  template:
+  ansible.builtin.template:
     src: templates/snapclient.j2
     dest: /etc/default/snapclient
     owner: root
     group: root
     mode: "0644"
+  become: true
   notify: Restart snapclient service.
 
 - name: Install snapclient service.
-  template:
+  ansible.builtin.template:
     src: templates/snapclient.service.j2
     dest: /etc/systemd/system/snapclient.service
     owner: root
     group: root
     mode: "0644"
+  become: true
   notify: Restart snapclient service.
 
 - name: Enable snapclient service.
-  systemd:
+  ansible.builtin.systemd:
     name: snapclient
     daemon_reload: true
     enabled: true
+  become: true

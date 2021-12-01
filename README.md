@@ -1,4 +1,4 @@
-# Ansible Template Role
+# Snapcast Client
 
 [![License: MIT](https://img.shields.io/github/license/stegmannb/ansible-role-snapclient)](https://github.com/stegmannb/ansible-role-snapclient/blob/master/LICENSE)
 ![Continuous Integration](https://github.com/stegmannb/ansible-role-snapclient/workflows/Continuous%20Integration/badge.svg)
@@ -20,9 +20,9 @@ A list of other roles hosted on Galaxy should go here, plus any details in regar
 
 Including an example of how to use your role (for instance, with variables passed in as parameters) is always nice for users too:
 
-    - hosts: servers
+    - hosts: speakers
       roles:
-         - { role: username.rolename, x: 42 }
+         - role: stegmannb.snapcast_client
 
 ## License
 
